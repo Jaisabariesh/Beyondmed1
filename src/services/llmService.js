@@ -123,35 +123,35 @@ export function generateLocalContextualReport(context) {
 
   // Contextual pattern reasoning strictly based on supplied data
   if (param === "SpO₂") {
-    interpretation = `At Minute ${targetIndex + 1} (${timestamp}), the 1-minute continuous heuristic check flagged acute hypoxemia with SpO₂ falling to ${val}%. Telemetry records concurrent cardiovascular response (Resting Heart Rate ${(rawData.restingHeartRate || rawData.heartRate)[targetIndex]} bpm, Respiratory Rate ${rawData.respiratoryRate[targetIndex]} breaths/min). Surrounding 1-minute interval checks show subsequent recovery, indicating an acute transient desaturation episode.`;
+    interpretation = `On Mission Day ${targetIndex + 1} (${timestamp}), continuous 1-minute telemetry flagged acute arterial hypoxemia with SpO₂ falling to ${val}%. Telemetry records concurrent cardiovascular response (Resting Heart Rate ${(rawData.restingHeartRate || rawData.heartRate)[targetIndex]} bpm, Respiratory Rate ${rawData.respiratoryRate[targetIndex]} breaths/min). Surrounding telemetry days show subsequent recovery, indicating an acute transient desaturation episode during high-workload EVA.`;
   } else if (param === "Stress") {
-    interpretation = `At Minute ${targetIndex + 1} (${timestamp}), the 1-minute continuous heuristic evaluation detected a high autonomic stress spike reaching ${val}/100. Blood Pressure at this time reached ${rawData.bloodPressure[targetIndex].systolic}/${rawData.bloodPressure[targetIndex].diastolic} mmHg and Respiratory Rate was ${rawData.respiratoryRate[targetIndex]} breaths/min.`;
+    interpretation = `On Mission Day ${targetIndex + 1} (${timestamp}), continuous 1-minute telemetry monitoring detected an autonomic stress surge reaching ${val}/100. Blood Pressure at this time reached ${rawData.bloodPressure[targetIndex].systolic}/${rawData.bloodPressure[targetIndex].diastolic} mmHg and Respiratory Rate was ${rawData.respiratoryRate[targetIndex]} breaths/min.`;
   } else if (param === "Vestibular Function") {
     const rhrVal = (rawData.restingHeartRate || rawData.heartRate)[targetIndex];
-    interpretation = `At Minute ${targetIndex + 1} (${timestamp}), the 1-minute continuous EOG + custom ONNX model classified reading ${val} as an outlier anomaly. Surrounding vital signs (Resting Heart Rate ${rhrVal} bpm, SpO₂ ${rawData.spo2[targetIndex]}%) remained nominal. In aerospace neuro-otology, this is consistent with neurovestibular sensory conflict / Space Motion Sickness during microgravity adaptation.`;
+    interpretation = `On Mission Day ${targetIndex + 1} (${timestamp}), continuous 1-minute EOG + custom ONNX model classified reading ${val} as an outlier anomaly. Surrounding vital signs (Resting Heart Rate ${rhrVal} bpm, SpO₂ ${rawData.spo2[targetIndex]}%) remained nominal. In aerospace neuro-otology, this is consistent with neurovestibular sensory conflict / Space Motion Sickness during microgravity adaptation.`;
   } else if (param === "Resting Heart Rate" || param === "VO₂ Max" || param === "Respiratory Rate" || param === "Blood Pressure") {
-    if (targetIndex === 14) { // Minute 15
+    if (targetIndex === 14) { // Day 15
       const currentRHR = (rawData.restingHeartRate || rawData.heartRate)[14];
-      interpretation = `At Minute 15 (${timestamp}), simultaneous algorithmic alerts were registered across cardiovascular and respiratory systems: acute resting heart rate elevation/tachycardia (${currentRHR} bpm), severe arterial oxygen desaturation (SpO₂ at ${rawData.spo2[14]}%), marked tachypnea (${rawData.respiratoryRate[14]} breaths/min), hypertensive response (${rawData.bloodPressure[14].systolic}/${rawData.bloodPressure[14].diastolic} mmHg), and an acute decline in VO₂ Max (${rawData.vo2Max[14]} ml/kg/min) alongside elevated energy expenditure (${rawData.caloriesBurned[14]} kcal burned). Surrounding telemetry before and after Minute 15 returned to baseline, indicating a transient acute physical or environmental stress event (such as strenuous Extravehicular Activity or environmental life-support fluctuation).`;
+      interpretation = `On Mission Day 15 (${timestamp}), simultaneous algorithmic alerts were registered across cardiovascular and respiratory systems: acute resting heart rate elevation/tachycardia (${currentRHR} bpm), severe arterial oxygen desaturation (SpO₂ at ${rawData.spo2[14]}%), marked tachypnea (${rawData.respiratoryRate[14]} breaths/min), hypertensive response (${rawData.bloodPressure[14].systolic}/${rawData.bloodPressure[14].diastolic} mmHg), and an acute decline in VO₂ Max (${rawData.vo2Max[14]} ml/kg/min) alongside elevated energy expenditure (${rawData.caloriesBurned[14]} kcal burned). Surrounding telemetry before and after Day 15 returned to baseline, indicating an acute physical/environmental stress event (such as strenuous Extravehicular Activity).`;
     } else {
-      interpretation = `At Minute ${targetIndex + 1} (${timestamp}), ${param} shifted to ${val} ${unit}, triggering ${method}. Surrounding telemetry shows adjacent parameters remaining within physiological boundaries.`;
+      interpretation = `On Mission Day ${targetIndex + 1} (${timestamp}), ${param} shifted to ${val} ${unit}, triggering ${method}. Surrounding daily telemetry shows adjacent parameters remaining within physiological boundaries.`;
     }
   } else if (param === "Radiation Dosimeter") {
-    interpretation = `At Minute ${targetIndex + 1} (${timestamp}), the dosimeter recorded an acute spike to ${val} mSv/day, exceeding the heuristic safety threshold. Concurrent parameters remained nominal, indicating an external ionizing radiation exposure event (such as orbital passage through the South Atlantic Anomaly or elevated solar particle activity).`;
+    interpretation = `On Mission Day ${targetIndex + 1} (${timestamp}), the dosimeter recorded an acute spike to ${val} mSv/day, exceeding the heuristic safety threshold. Concurrent parameters remained nominal, indicating an external ionizing radiation exposure event (such as orbital passage through the South Atlantic Anomaly or elevated solar particle activity).`;
   } else if (param === "Gut Microbes") {
-    interpretation = `At Minute ${targetIndex + 1} (${timestamp}), heuristic detection flagged a depletion in microbial alpha diversity (${rawData.gutMicrobes[targetIndex].diversity.toFixed(2)}) alongside positive pathogen detection.`;
-  } else if (param === "Muscle Mass" || param === "Spinal Deformity" || param === "Range of Motion") {
-    interpretation = `At Minute ${targetIndex + 1} (${timestamp}), musculoskeletal anomalies were flagged by CUSUM against personalized rolling median baselines: Muscle Mass ${rawData.muscleMass[targetIndex]} kg (baseline shift), Spinal Deformity ${rawData.spinalDeformity[targetIndex]}°, and Range of Motion reduction to ${rawData.rangeOfMotion[targetIndex]}°. This clustering reflects microgravity-induced postural/spinal elongation and localized musculoskeletal stiffness.`;
+    interpretation = `On Mission Day ${targetIndex + 1} (${timestamp}), weekly lab assay heuristic detection flagged a depletion in microbial alpha diversity (${rawData.gutMicrobes[targetIndex].diversity.toFixed(2)}) alongside positive pathogen detection on Week 4.`;
+  } else if (param === "Muscle Mass" || param === "Range of Motion") {
+    interpretation = `On Mission Day ${targetIndex + 1} (${timestamp}), musculoskeletal anomalies were flagged by CUSUM against personalized rolling median baselines: Muscle Mass ${rawData.muscleMass[targetIndex]} kg (baseline shift) and Range of Motion reduction to ${rawData.rangeOfMotion[targetIndex]}°. This clustering reflects cumulative microgravity-induced localized musculoskeletal stiffness and deconditioning.`;
   } else if (param.startsWith("Nutrition") || param === "Calories Burned") {
-    interpretation = `At Minute ${targetIndex + 1} (${timestamp}), CUSUM detected a significant shift in ${param} (${val} ${unit}) from personalized baseline. Telemetry shows corresponding metabolic variance during this phase.`;
+    interpretation = `On Mission Day ${targetIndex + 1} (${timestamp}), CUSUM detected a significant shift in ${param} (${val} ${unit}) from personalized baseline. Telemetry shows corresponding metabolic variance during this phase.`;
   } else {
-    interpretation = `At Minute ${targetIndex + 1} (${timestamp}), ${param} value of ${val} ${unit} generated an alert via ${method}.`;
+    interpretation = `On Mission Day ${targetIndex + 1} (${timestamp}), ${param} value of ${val} ${unit} generated an alert via ${method}.`;
   }
 
   return `### 1. DETECTED ABNORMALITY
 - **Parameter**: ${param}
 - **Detection Algorithm**: ${method}
-- **Telemetry Step**: Step ${targetIndex + 1} of ${rawData.timestamps.length} (${new Date(timestamp).toUTCString()})
+- **Mission Timeline**: Day ${targetIndex + 1} of 25 (${new Date(timestamp).toLocaleDateString()})
 - **Recorded Measurement**: ${val} ${unit}${targetAlert.baseline !== undefined ? ` (Personalized Rolling-Median Baseline: ${targetAlert.baseline} ${unit}, Deviation: ${targetAlert.deviation > 0 ? "+" : ""}${targetAlert.deviation} ${unit})` : ""}
 - **Algorithmic Alert Severity**: ${targetAlert.severity.toUpperCase()}
 - **Algorithmic Signal**: ${targetAlert.message}
@@ -159,11 +159,11 @@ export function generateLocalContextualReport(context) {
 ### 2. CONTEXTUAL REASONING: WHAT HAPPENED AT THAT PARTICULAR TIME?
 ${interpretation}
 
-**Concurrent Alerts at Step ${targetIndex + 1}**:
+**Concurrent Alerts on Day ${targetIndex + 1}**:
 ${concurrentAlerts.length > 0 ? concurrentAlerts.map(a => `- [${a.parameter}] detected via ${a.detectionMethod}: ${a.message}`).join("\n") : "- None. This was an isolated parameter anomaly."}
 
 **Relevant Preceding Anomaly History**:
-${previousAlerts.length > 0 ? previousAlerts.slice(-3).map(a => `- Step ${a.index + 1} [${a.parameter}]: ${a.message}`).join("\n") : "- No prior anomalies recorded."}
+${previousAlerts.length > 0 ? previousAlerts.slice(-3).map(a => `- Day ${a.index + 1} [${a.parameter}]: ${a.message}`).join("\n") : "- No prior anomalies recorded."}
 
 ### 3. CLINICAL DISTINCTION & PROTOCOL COMPLIANCE
 - **Possible Interpretation**: Evidence suggests temporary operational / mission stressors affecting ${param}.

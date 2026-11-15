@@ -70,7 +70,7 @@ export function detectSpO2Anomalies(spo2Array, timestamps) {
         value: val,
         unit: "%",
         severity: val < 90 ? "critical" : "warning",
-        message: `SpO₂ hypoxemia detected at 1-minute check (Minute ${i + 1}): ${val}% falls below normal physiological oxygen saturation threshold (< 95%).`
+        message: `SpO₂ hypoxemia detected via continuous 1-minute telemetry on Day ${i + 1} (acute dip to ${val}%): falls below normal physiological oxygen saturation threshold (< 95%).`
       });
     }
   });
@@ -190,7 +190,7 @@ export function detectStressAnomalies(stressArray, timestamps) {
         value: val,
         unit: "/100",
         severity: val > 80 ? "critical" : "warning",
-        message: `Stress index elevation detected at 1-minute check (Minute ${i + 1}): autonomic stress score reached ${val}/100, exceeding mission operational tolerance (> 60/100).`
+        message: `Stress index elevation detected via continuous 1-minute telemetry on Day ${i + 1} (surge to ${val}/100): autonomic stress score exceeds mission operational tolerance (> 60/100).`
       });
     }
   });

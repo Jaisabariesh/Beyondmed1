@@ -3,22 +3,25 @@
  * Route: /
  *
  * SPECIFICATION COMPLIANCE:
+ * - 25-Day Mission Telemetry (Sol 1 to Sol 25)
  * - Exactly the 16 specified parameters
+ * - Per-Minute Telemetry: SpO₂, Vestibular Function (EOG + ONNX), and Stress
+ *   are monitored continuously per minute (1,440 checks/day × 25 days = 36,000 data points)
  * - Parameter-specific detection methods:
  *   * CUSUM with personalized rolling-median baseline for:
- *     Resting Heart Rate, VO₂ Max, Muscle Mass (BIA + CUSUM), Spinal Deformity,
+ *     Resting Heart Rate, VO₂ Max, Muscle Mass (BIA + CUSUM),
  *     Range of Motion (degrees), Nutrition (calories, carbohydrates, protein, fat), Calories Burned
  *   * Heuristics for:
  *     Blood Pressure, SpO₂, Respiratory Rate, Sleep Duration, Sleep Quality (/100),
- *     Stress (/100), Radiation Dosimeter, Gut Microbes
+ *     Stress (/100), Radiation Dosimeter, Gut Microbes (Weekly once test only)
  *   * EOG + custom ONNX model for:
- *     Vestibular Function
+ *     Vestibular Function (Checked per minute)
  * - No additional parameters, no extraneous dashboards
  */
 
 import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import rawData from "../data/rawData.js";
+import rawData, { getMinuteTelemetryForDay } from "../data/rawData.js";
 import { runAllCUSUM, runCUSUM } from "../algorithms/cusum.js";
 import { runAllHeuristics } from "../algorithms/heuristics.js";
 import { runVestibularDetection } from "../algorithms/vestibular.js";
@@ -27,31 +30,17 @@ export default function Dashboard() {
   const [selectedStep, setSelectedStep] = useState(rawData.timestamps.length - 1);
   const [vestibularAlerts, setVestibularAlerts] = useState([]);
   const [onnxStatus, setOnnxStatus] = useState("initializing");
-  const [isPlaying, setIsPlaying] = useState(false);
 
-  // Auto-play live 1-minute stream simulation
-  useEffect(() => {
-    let interval = null;
-    if (isPlaying) {
-      interval = setInterval(() => {
-        setSelectedStep(prev => (prev >= rawData.timestamps.length - 1 ? 0 : prev + 1));
-      }, 1200);
-    }
-    return () => clearInterval(interval);
-  }, [isPlaying]);
-
-  // Run CUSUM & Heuristics
+  // Run CUSUM & Heuristics across the 25 mission days
   const cusumAlerts = useMemo(() => runAllCUSUM(rawData), []);
   const heuristicAlerts = useMemo(() => runAllHeuristics(rawData), []);
 
-  // Compute rolling median baselines for CUSUM parameters
+  // Compute rolling median baselines for CUSUM parameters across 25 days
   const baselines = useMemo(() => {
     return {
       restingHeartRate: runCUSUM(rawData.restingHeartRate || rawData.heartRate, rawData.timestamps, { label: "Resting Heart Rate" }).baseline,
       vo2Max: runCUSUM(rawData.vo2Max, rawData.timestamps, { label: "VO₂ Max" }).baseline,
       muscleMass: runCUSUM(rawData.muscleMass, rawData.timestamps, { label: "Muscle Mass" }).baseline,
-      spinalDeformity: runCUSUM(rawData.spinalDeformity, rawData.timestamps, { label: "Spinal Deformity" }).baseline,
-
       rangeOfMotion: runCUSUM(rawData.rangeOfMotion, rawData.timestamps, { label: "Range of Motion" }).baseline,
       calories: runCUSUM(rawData.nutrition.calories, rawData.timestamps, { label: "Nutrition: Calories" }).baseline,
       carbohydrates: runCUSUM(rawData.nutrition.carbohydrates, rawData.timestamps, { label: "Nutrition: Carbohydrates" }).baseline,
@@ -81,56 +70,60 @@ export default function Dashboard() {
     return () => { isMounted = false; };
   }, []);
 
-  // Combined alerts across all 16 parameters
+  // Combined alerts across all 16 parameters (25-day mission)
   const allAlerts = useMemo(() => {
-    return [...cusumAlerts, ...heuristicAlerts, ...vestibularAlerts].sort(
-      (a, b) => a.index - b.index
-    );
+    return [...cusumAlerts, ...heuristicAlerts, ...vestibularAlerts]
+      .filter(a => a.parameter !== "Spinal Deformity")
+      .sort((a, b) => a.index - b.index);
   }, [cusumAlerts, heuristicAlerts, vestibularAlerts]);
 
-  // Alerts at current selected time step
+  // Alerts at current selected mission day
   const currentStepAlerts = useMemo(() => {
     return allAlerts.filter(a => a.index === selectedStep);
   }, [allAlerts, selectedStep]);
 
-  // Check if a specific parameter has an alert at the selected time step
+  // Check if a specific parameter has an alert at the selected mission day
   const getParamAlert = (paramName) => {
     return currentStepAlerts.find(a => a.parameter === paramName);
   };
 
-  const stepDate = new Date(rawData.timestamps[selectedStep]).toUTCString();
+  const stepDate = new Date(rawData.timestamps[selectedStep]).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
 
   return (
     <div className="dashboard-container">
-      {/* Top Banner & Telemetry Navigation */}
+      {/* Top Banner & 25-Day Telemetry Navigation */}
       <section className="mission-header-panel">
         <div className="mission-title-group">
-          <div className="badge-mission">MISSION TIME TELEMETRY</div>
+          <div className="badge-mission">25-DAY MISSION TELEMETRY</div>
           <h1 className="mission-title">BEYOND MED Telemetry Dashboard</h1>
           <p className="mission-subtitle">
-            Astronaut Physiological State & Algorithmic Detection Engine
+            Astronaut Physiological State & Algorithmic Detection Engine (Sol 1 to Sol 25)
           </p>
         </div>
 
         <div className="quick-summary-grid">
           <div className="summary-stat-card">
-            <span className="summary-label">Mission Time-Step</span>
-            <span className="summary-value">Step {selectedStep + 1} <small>/ {rawData.timestamps.length}</small></span>
+            <span className="summary-label">Mission Timeline</span>
+            <span className="summary-value">Sol {selectedStep + 1} <small>/ 25 Days</small></span>
             <span className="summary-sub">{stepDate}</span>
           </div>
 
           <div className="summary-stat-card">
-            <span className="summary-label">Step Alerts</span>
+            <span className="summary-label">Day {selectedStep + 1} Alerts</span>
             <span className={`summary-value ${currentStepAlerts.length > 0 ? "alert-text-critical" : "alert-text-nominal"}`}>
               {currentStepAlerts.length}
             </span>
             <span className="summary-sub">
-              {currentStepAlerts.length > 0 ? "Anomalies Flagged" : "Nominal Window"}
+              {currentStepAlerts.length > 0 ? "Anomalies Flagged Today" : "Nominal Flight Day"}
             </span>
           </div>
 
           <div className="summary-stat-card">
-            <span className="summary-label">Total Mission Anomalies</span>
+            <span className="summary-label">Total 25-Day Anomalies</span>
             <span className="summary-value alert-text-warning">{allAlerts.length}</span>
             <span className="summary-sub">
               CUSUM: {cusumAlerts.length} | Heuristic: {heuristicAlerts.length} | ONNX: {vestibularAlerts.length}
@@ -139,108 +132,43 @@ export default function Dashboard() {
 
           <div className="summary-stat-card">
             <span className="summary-label">High-Frequency Telemetry</span>
-            <span className="summary-value" style={{ fontSize: "1.1rem", color: "var(--accent-cyan)" }}>
-              ⏱️ 1-Min Checks
+            <span className="summary-value" style={{ fontSize: "1.05rem", color: "var(--accent-cyan)" }}>
+              ⏱️ 1-Min Continuous
             </span>
-            <span className="summary-sub">SpO₂ · Vestibular · Stress</span>
+            <span className="summary-sub">1,440 checks/day across 25 Days</span>
           </div>
 
           <div className="summary-stat-card">
             <span className="summary-label">Lab Assay Protocol</span>
-            <span className="summary-value" style={{ fontSize: "1.1rem", color: "var(--accent-purple)" }}>
+            <span className="summary-value" style={{ fontSize: "1.05rem", color: "var(--accent-purple)" }}>
               📅 Weekly Once
             </span>
-            <span className="summary-sub">Gut Microbes (Not Daily)</span>
+            <span className="summary-sub">Gut Microbes (Sol 7, 14, 21, 24)</span>
           </div>
         </div>
       </section>
 
-      {/* High-Frequency 1-Minute Continuous Monitoring Stream Panel */}
-      <section className="per-minute-stream-panel">
-        <div className="per-minute-header">
-          <div className="per-minute-title-block">
-            <span className="badge-per-minute">⏱️ 1-MINUTE CONTINUOUS SAMPLING</span>
-            <h3 className="per-minute-heading">
-              Per-Minute Telemetry Streams: SpO₂, Vestibular Function (EOG), & Stress
-            </h3>
-          </div>
-          <button
-            className={`btn-stream-toggle ${isPlaying ? "stream-playing" : ""}`}
-            onClick={() => setIsPlaying(!isPlaying)}
-          >
-            {isPlaying ? "⏸ Pause 1-Min Stream Simulation" : "▶ Run 1-Min Telemetry Simulation"}
-          </button>
-        </div>
-
-        <div className="per-minute-cards-grid">
-          {/* SpO2 */}
-          <div className={`stream-subcard ${getParamAlert("SpO₂") ? "stream-alert" : ""}`}>
-            <div className="stream-subcard-header">
-              <span className="stream-param-title">SpO₂ (Blood Oxygen)</span>
-              <span className="stream-freq-pill">Checked Per Minute</span>
-            </div>
-            <div className="stream-value-row">
-              <span className="stream-big-val">{rawData.spo2[selectedStep]}%</span>
-              <span className={`stream-status ${getParamAlert("SpO₂") ? "status-alert" : "status-ok"}`}>
-                {getParamAlert("SpO₂") ? "⚠️ HYPOXEMIA" : "✓ NOMINAL"}
-              </span>
-            </div>
-            <span className="stream-detail">Continuous 1-minute heuristic check (normal threshold ≥ 95%)</span>
-          </div>
-
-          {/* Vestibular EOG */}
-          <div className={`stream-subcard ${getParamAlert("Vestibular Function") ? "stream-alert" : ""}`}>
-            <div className="stream-subcard-header">
-              <span className="stream-param-title">Vestibular Function (EOG)</span>
-              <span className="stream-freq-pill">Checked Per Minute (ONNX)</span>
-            </div>
-            <div className="stream-value-row">
-              <span className="stream-big-val">{rawData.vestibular[selectedStep]}</span>
-              <span className={`stream-status ${getParamAlert("Vestibular Function") ? "status-alert" : "status-ok"}`}>
-                {getParamAlert("Vestibular Function") ? "⚠️ ONNX OUTLIER" : "✓ NOMINAL"}
-              </span>
-            </div>
-            <span className="stream-detail">EOG features classified per minute via custom ONNX OneClassSVM model</span>
-          </div>
-
-          {/* Stress */}
-          <div className={`stream-subcard ${getParamAlert("Stress") ? "stream-alert" : ""}`}>
-            <div className="stream-subcard-header">
-              <span className="stream-param-title">Autonomic Stress Index</span>
-              <span className="stream-freq-pill">Checked Per Minute</span>
-            </div>
-            <div className="stream-value-row">
-              <span className="stream-big-val">{rawData.stress[selectedStep]} / 100</span>
-              <span className={`stream-status ${getParamAlert("Stress") ? "status-alert" : "status-ok"}`}>
-                {getParamAlert("Stress") ? "⚠️ HIGH STRESS" : "✓ NOMINAL"}
-              </span>
-            </div>
-            <span className="stream-detail">Continuous 1-minute heuristic check (operational ceiling ≤ 60/100)</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Time Step Scrubber */}
+      {/* 25-Day Mission Timeline Scrubber */}
       <section className="time-scrubber-panel">
         <div className="scrubber-header">
-          <span className="scrubber-label">⏱ Telemetry Time-Step Scrubber:</span>
+          <span className="scrubber-label">🗓️ Mission Timeline (25 Days):</span>
           <div className="scrubber-buttons">
             <button
               className="scrubber-btn"
               onClick={() => setSelectedStep(prev => Math.max(0, prev - 1))}
               disabled={selectedStep === 0}
             >
-              ◀ Previous Step
+              ◀ Previous Day
             </button>
             <span className="scrubber-step-indicator">
-              Step {selectedStep + 1} of {rawData.timestamps.length}
+              Day {selectedStep + 1} of 25 (Sol {selectedStep + 1})
             </span>
             <button
               className="scrubber-btn"
               onClick={() => setSelectedStep(prev => Math.min(rawData.timestamps.length - 1, prev + 1))}
               disabled={selectedStep === rawData.timestamps.length - 1}
             >
-              Next Step ▶
+              Next Day ▶
             </button>
           </div>
         </div>
@@ -260,7 +188,7 @@ export default function Dashboard() {
                 key={idx}
                 className={`timeline-tick ${selectedStep === idx ? "active" : ""} ${hasAlert ? "has-alert" : ""}`}
                 onClick={() => setSelectedStep(idx)}
-                title={`Step ${idx + 1}: ${hasAlert ? "Anomaly Detected" : "Nominal"}`}
+                title={`Day ${idx + 1} (${new Date(ts).toLocaleDateString()}): ${hasAlert ? "Anomaly Detected" : "Nominal"}`}
               >
                 {idx + 1}
               </button>
@@ -269,11 +197,11 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Active Step Alert Banner if anomalies exist at this step */}
+      {/* Active Day Alert Banner if anomalies exist on this day */}
       {currentStepAlerts.length > 0 && (
         <div className="step-alert-banner">
           <div className="alert-banner-header">
-            <span className="alert-badge-pulse">⚠️ ALERTS AT STEP {selectedStep + 1}</span>
+            <span className="alert-badge-pulse">⚠️ ALERTS ON DAY {selectedStep + 1}</span>
             <Link to="/alert" className="banner-link">View All Alerts in Alert Center ▶</Link>
           </div>
           <div className="alert-banner-items">
@@ -291,8 +219,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Grid of the Exact 16 Health Parameters */}
-      <h2 className="section-title">Telemetry Parameters (Exact 16 BEYOND MED Parameters)</h2>
+      {/* Grid of the Exact BEYOND MED Health Parameters */}
+      <h2 className="section-title">Telemetry Parameters (Exact BEYOND MED Parameters — Sol {selectedStep + 1})</h2>
 
       <div className="parameters-grid">
         {/* 1. Resting Heart Rate */}
@@ -320,7 +248,7 @@ export default function Dashboard() {
         <ParameterCard
           name="SpO₂"
           method="Heuristics"
-          methodDetail="Checked per minute (Threshold: ≥ 95%)"
+          methodDetail="Checked per minute (1,440 continuous checks/day · Threshold: ≥ 95%)"
           isPerMinute={true}
           value={rawData.spo2[selectedStep]}
           unit="%"
@@ -359,8 +287,7 @@ export default function Dashboard() {
           alert={getParamAlert("Muscle Mass")}
         />
 
-
-        {/* 8. Sleep Duration */}
+        {/* 7. Sleep Duration */}
         <ParameterCard
           name="Sleep Duration"
           method="Heuristics"
@@ -370,7 +297,7 @@ export default function Dashboard() {
           alert={getParamAlert("Sleep Duration")}
         />
 
-        {/* 9. Sleep Quality */}
+        {/* 8. Sleep Quality */}
         <ParameterCard
           name="Sleep Quality"
           method="Heuristics"
@@ -380,18 +307,18 @@ export default function Dashboard() {
           alert={getParamAlert("Sleep Quality")}
         />
 
-        {/* 10. Stress */}
+        {/* 9. Stress */}
         <ParameterCard
           name="Stress"
           method="Heuristics"
-          methodDetail="Checked per minute (Ceiling: ≤ 60/100)"
+          methodDetail="Checked per minute (1,440 continuous checks/day · Ceiling: ≤ 60/100)"
           isPerMinute={true}
           value={rawData.stress[selectedStep]}
           unit="/100"
           alert={getParamAlert("Stress")}
         />
 
-        {/* 11. Radiation Dosimeter */}
+        {/* 10. Radiation Dosimeter */}
         <ParameterCard
           name="Radiation Dosimeter"
           method="Heuristics"
@@ -401,18 +328,18 @@ export default function Dashboard() {
           alert={getParamAlert("Radiation Dosimeter")}
         />
 
-        {/* 12. Vestibular Function */}
+        {/* 11. Vestibular Function */}
         <ParameterCard
           name="Vestibular Function"
           method="EOG + custom ONNX model"
-          methodDetail="Checked per minute via eog_scaler + eog_model ONNX"
+          methodDetail="Checked per minute via eog_scaler + eog_model ONNX (1,440 checks/day)"
           isPerMinute={true}
           value={rawData.vestibular[selectedStep]}
           unit="EOG index"
           alert={getParamAlert("Vestibular Function")}
         />
 
-        {/* 13. Range of Motion */}
+        {/* 12. Range of Motion */}
         <ParameterCard
           name="Range of Motion"
           method="CUSUM"
@@ -423,19 +350,19 @@ export default function Dashboard() {
           alert={getParamAlert("Range of Motion")}
         />
 
-        {/* 14. Gut Microbes */}
+        {/* 13. Gut Microbes */}
         <ParameterCard
           name="Gut Microbes"
           method="Heuristics"
-          methodDetail="Weekly once test only (not daily) · Metagenomic Sequencing"
+          methodDetail="Weekly once test only (not daily, Sol 7, 14, 21, 24) · Metagenomic Sequencing"
           isWeekly={true}
           value={`Div: ${rawData.gutMicrobes[selectedStep].diversity.toFixed(2)}`}
           unit={`| Pathogen: ${rawData.gutMicrobes[selectedStep].pathogenPresence ? "DETECTED" : "None"}`}
-          baseline={`Active Lab Assay: ${rawData.gutMicrobes[selectedStep].assayDate || "Week 3 Assay"} (Weekly once only)`}
+          baseline={`Active Lab Assay: ${rawData.gutMicrobes[selectedStep].assayDate} (Weekly once only)`}
           alert={getParamAlert("Gut Microbes")}
         />
 
-        {/* 15. Nutrition: Calories */}
+        {/* 14. Nutrition: Calories */}
         <ParameterCard
           name="Nutrition: Calories"
           method="CUSUM"
@@ -446,7 +373,7 @@ export default function Dashboard() {
           alert={getParamAlert("Nutrition: Calories")}
         />
 
-        {/* 15. Nutrition: Carbohydrates */}
+        {/* 14. Nutrition: Carbohydrates */}
         <ParameterCard
           name="Nutrition: Carbohydrates"
           method="CUSUM"
@@ -457,7 +384,7 @@ export default function Dashboard() {
           alert={getParamAlert("Nutrition: Carbohydrates")}
         />
 
-        {/* 15. Nutrition: Protein */}
+        {/* 14. Nutrition: Protein */}
         <ParameterCard
           name="Nutrition: Protein"
           method="CUSUM"
@@ -468,7 +395,7 @@ export default function Dashboard() {
           alert={getParamAlert("Nutrition: Protein")}
         />
 
-        {/* 15. Nutrition: Fat */}
+        {/* 14. Nutrition: Fat */}
         <ParameterCard
           name="Nutrition: Fat"
           method="CUSUM"
@@ -479,7 +406,7 @@ export default function Dashboard() {
           alert={getParamAlert("Nutrition: Fat")}
         />
 
-        {/* 16. Calories Burned */}
+        {/* 15. Calories Burned */}
         <ParameterCard
           name="Calories Burned"
           method="CUSUM"
@@ -493,7 +420,7 @@ export default function Dashboard() {
 
       {/* System Architecture Protocol Footer */}
       <footer className="architecture-footer">
-        <div className="arch-flow-title">BEYOND MED SYSTEM ARCHITECTURE</div>
+        <div className="arch-flow-title">BEYOND MED SYSTEM ARCHITECTURE (25-DAY FLIGHT)</div>
         <div className="arch-flow-diagram">
           <span>Measurement Data</span>
           <span>➜</span>
@@ -524,7 +451,7 @@ function ParameterCard({ name, method, methodDetail, value, unit, baseline, aler
       <div className="param-header">
         <div className="param-title-wrap">
           <span className="param-name">{name}</span>
-          {isPerMinute && <span className="badge-min-tag">⏱️ 1-MIN CHECK</span>}
+          {isPerMinute && <span className="badge-min-tag">⏱️ 1-MIN CONTINUOUS CHECK</span>}
           {isWeekly && <span className="badge-weekly-tag">📅 WEEKLY ONCE TEST</span>}
         </div>
         <span className={`param-status-pill ${isAlert ? "pill-alert" : "pill-normal"}`}>

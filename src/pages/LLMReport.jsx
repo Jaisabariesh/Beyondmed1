@@ -170,7 +170,7 @@ export default function LLMReport() {
         >
           {allAlerts.map((alt, idx) => (
             <option key={idx} value={idx}>
-              [{alt.severity.toUpperCase()}] Step {alt.index + 1} ({new Date(alt.timestamp).toLocaleDateString()}): {alt.parameter} — {alt.detectionMethod}
+              [{alt.severity.toUpperCase()}] Day {alt.index + 1} ({new Date(alt.timestamp).toLocaleDateString()}): {alt.parameter} — {alt.detectionMethod}
             </option>
           ))}
         </select>
@@ -205,10 +205,10 @@ export default function LLMReport() {
                   </div>
                 )}
                 <div className="context-kv">
-                  <strong>Telemetry Step:</strong> Step {activeContext.targetIndex + 1}
+                  <strong>Mission Day:</strong> Day {activeContext.targetIndex + 1} of 25
                 </div>
                 <div className="context-kv">
-                  <strong>Timestamp:</strong> {activeContext.timestamp}
+                  <strong>Date:</strong> {new Date(activeContext.timestamp).toLocaleDateString()}
                 </div>
                 <div className="context-kv">
                   <strong>Severity:</strong> {activeContext.targetAlert.severity.toUpperCase()}
@@ -217,7 +217,7 @@ export default function LLMReport() {
 
               {/* Concurrent Alerts */}
               <div className="context-box">
-                <span className="context-box-title">Concurrent Alerts at Step {activeContext.targetIndex + 1}</span>
+                <span className="context-box-title">Concurrent Alerts on Day {activeContext.targetIndex + 1}</span>
                 {activeContext.concurrentAlerts.length === 0 ? (
                   <span className="context-empty-text">None (Isolated parameter event)</span>
                 ) : (
@@ -305,7 +305,7 @@ export default function LLMReport() {
           {reportState.loading ? (
             <div className="report-loading-placeholder">
               <div className="loading-spinner"></div>
-              <p>LLM is evaluating what happened at Step {activeContext?.targetIndex + 1}...</p>
+              <p>LLM is evaluating what happened on Day {activeContext?.targetIndex + 1}...</p>
               <small>Synthesizing detected anomaly with surrounding telemetry window...</small>
             </div>
           ) : reportState.error ? (

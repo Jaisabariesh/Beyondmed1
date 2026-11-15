@@ -119,7 +119,7 @@ export async function runVestibularDetection(vestibularData, timestamps) {
         value: rawEOG,
         unit: "EOG index",
         severity: "critical",
-        message: `Vestibular Function anomaly classified by custom ONNX model at 1-minute check (Minute ${i + 1}): EOG reading ${rawEOG} deviates beyond normal vestibular boundary (OneClassSVM outlier detected).`
+        message: `Vestibular Function anomaly classified by custom ONNX model on Day ${i + 1} (continuous 1-minute EOG check, reading ${rawEOG}): OneClassSVM outlier detected beyond normal vestibular boundary.`
       });
     }
   }

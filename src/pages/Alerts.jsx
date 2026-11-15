@@ -187,9 +187,7 @@ export default function Alerts() {
                       <span className="badge-min-tag">⏱️ 1-Min Check</span>
                     )}
                     <span className="badge-step">
-                      {["SpO₂", "Vestibular Function", "Stress"].includes(alert.parameter)
-                        ? `Minute ${alert.index + 1}`
-                        : `Step ${alert.index + 1}`} of {rawData.timestamps.length}
+                      Day {alert.index + 1} of 25
                     </span>
                   </div>
 
